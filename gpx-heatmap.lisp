@@ -24,19 +24,30 @@
      maximizing (max (vz (car seg)) (vz (cdr seg))) into max-ele
      finally (return (values (vec3 min-lat min-lon min-ele) (vec3 max-lat max-lon max-ele)))))
 
-(defun find-segments (points)
-  ;; (multiple-value-bind (min-lat max-lat min-lon max-lon min-ele max-ele) (bounding-box points)
-  ;;   ))
+(defun find-segments (segments tolerance)
+  (let ((kdt (kdtree:create-kd-tree))
+        (new-segments nil))
+    (format t "Total number of points: ~a~%" (length segments))
+    (loop for pt across segments 
+       when (and (> (kdtree:pt-count kdt) 0) (let ((near (kdtree:nearest kdt (car pt))))
+                                               (format t "point ~a near ~a~%" near (car pt))
+                                               (> (vlength (v- (car pt) near)) tolerance)))
+       do
+         (push pt new-segments)
+         (kdtree:add-point kdt (car pt)))
+    (make-array (length new-segments) :initial-contents new-segments)))
 
-  (format t "Total number of points: ~a~%" (length points)))
 
-(defun create-heatmap (directory &key (style :points))
+(defun create-heatmap (directory &key (style :points) (color (vec4 0 1 0 1.0)))
   (let* ((gpx-pts (make-instance 'clgl:primitives)))
     (cond ((eq style :points)
            (let ((all-points (gpxtools:read-directory-to-points directory)))
              (multiple-value-bind (min-pt max-pt) (bounding-box all-points )
                (loop for gp across all-points
-                  do (clgl:add-point gpx-pts (clgl:map-pt gp min-pt max-pt) (vec4 0 1 0 0.25))))))
+                  do
+                    (clgl:add-point gpx-pts
+                                    (clgl:map-pt gp min-pt max-pt)
+                                    color)))))
           ((eq style :lines)
            (let ((all-segments (gpxtools:read-directory-to-segments directory)))
              (multiple-value-bind (min-pt max-pt) (bounding-box-segments all-segments)
@@ -45,5 +56,16 @@
                     (clgl:add-line gpx-pts
                                    (clgl:map-pt (car gp) min-pt max-pt)
                                    (clgl:map-pt (cdr gp) min-pt max-pt)
-                                   (vec4 0 1 0 0.25)))))))
+                                   color))))))
+    gpx-pts))
+
+(defun create-heatmap-from-segments (segments &key (color (vec4 0 1 0 1.0)))
+  (let ((gpx-pts (make-instance 'clgl:primitives)))
+    (multiple-value-bind (min-pt max-pt) (bounding-box-segments segments)
+      (loop for gp across segments
+         do
+           (clgl:add-line gpx-pts
+                          (clgl:map-pt (car gp) min-pt max-pt)
+                          (clgl:map-pt (cdr gp) min-pt max-pt)
+                          color)))
     gpx-pts))

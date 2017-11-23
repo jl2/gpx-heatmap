@@ -4,6 +4,8 @@
 
 (defpackage #:gpx-heatmap
   (:use #:cl #:alexandria #:gpxtools #:3d-vectors)
-  (:export #:create-heatmap))
+  (:export  #:find-segments
+            #:create-heatmap
+            #:create-heatmap-from-segments))
 
 

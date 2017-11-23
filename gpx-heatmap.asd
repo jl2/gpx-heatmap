@@ -8,6 +8,7 @@
   :license "ISC"
   :depends-on (#:clgl
                #:gpxtools
+               #:kdtree
                #:utm)
   :serial t
   :components ((:file "package")
